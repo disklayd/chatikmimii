@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>ЧатикМими 🐰</title>
+
+<style>
+
+* { box-sizing: border-box; }
+
+body {
+
+  margin: 0;
+
+  background: #0d1117;
+
+  color: #e6edf3;
+
+  font-family: system-ui, sans-serif;
+
+  height: 100dvh;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+}
+
+.app {
+
+  width: 100%;
+
+  max-width: 480px;
+
+  height: 100dvh;
+
+  max-height: 800px;
+
+  background: #161b22;
+
+  display: flex;
+
+  flex-direction: column;
+
+  border: 1px solid #30363d;
+
+  border-radius: 18px;
+
+  overflow: hidden;
+
+}
+
+header {
+
+  padding: 16px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  border-bottom: 1px solid #30363d;
+
+}
+
+.avatar {
+
+  font-size: 30px;
+
+  background: #252b45;
+
+  padding: 8px;
+
+  border-radius: 12px;
+
+}
+
+h1 { font-size: 17px; margin: 0; }
+
+header p { margin: 3px 0 0; color: #8b949e; font-size: 12px; }
+
+.tools { margin-left: auto; display: flex; gap: 6px; }
+
+button {
+
+  border: 0;
+
+  cursor: pointer;
+
+  color: white;
+
+  border-radius: 10px;
+
+  padding: 10px;
+
+  background: #252b36;
+
+  font-size: 16px;
+
+}
+
+#chat {
+
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 16px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+
+}
+
+.msg {
+
+  max-width: 85%;
+
+  padding: 12px 14px;
+
+  border-radius: 15px;
+
+  line-height: 1.5;
+
+  font-size: 14px;
+
+  overflow-wrap: anywhere;
+
+  white-space: pre-wrap;
+
+  animation: appear .2s ease;
+
+}
+
+@keyframes appear {
+
+  from { opacity: 0; transform: translateY(5px); }
+
+  to { opacity: 1; transform: translateY(0); }
+
+}
+
+.bot {
+
+  align-self: flex-start;
+
+  background: #1c2128;
+
+  border: 1px solid #30363d;
+
+  border-bottom-left-radius: 4px;
+
+}
+
+.user {
+
+  align-self: flex-end;
+
+  background: linear-gradient(135deg,#4d6bfe,#3451d1);
+
+  border-bottom-right-radius: 4px;
+
+}
+
+.name {
+
+  display: block;
+
+  font-size: 11px;
+
+  color: #91a3ff;
+
+  margin-bottom: 4px;
+
+  font-weight: bold;
+
+}
+
+.user .name { color: #e1e6ff; }
+
+#typing { color: #8b949e; padding: 5px 16px; }
+
+form {
+
+  display: flex;
+
+  gap: 8px;
+
+  padding: 12px;
+
+  border-top: 1px solid #30363d;
+
+}
+
+input {
+
+  min-width: 0;
+
+  flex: 1;
+
+  padding: 13px;
+
+  border-radius: 12px;
+
+  border: 1px solid #30363d;
+
+  background: #1c2128;
+
+  color: white;
+
+  font-size: 15px;
+
+  outline: none;
+
+}
+
+input:focus { border-color: #4d6bfe; }
+
+.send { background: #4d6bfe; padding: 0 18px; }
+
+@media (min-width: 500px) {
+
+  .app { height: 92dvh; }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+  <header>
+
+    <div class="avatar">🐰</div>
+
+    <div>
+
+      <h1>ЧатикМими</h1>
+
+      <p>💙 Твой милый чат-бот</p>
+
+    </div>
+
+    <div class="tools">
+
+      <button id="sound" title="Звук">🔊</button>
+
+      <button id="clear" title="Очистить">🗑️</button>
+
+    </div>
+
+  </header>
+
+  <main id="chat"></main>
+
+  <div id="typing" hidden>Мими печатает... 💭</div>
+
+  <form id="form">
+
+    <input id="message" maxlength="500"
+
+      placeholder="Напиши Мими..." autocomplete="off">
+
+    <button class="send" type="submit">➤</button>
+
+  </form>
+
+</div>
+
+<script>
+
+const chat = document.querySelector("#chat");
+
+const form = document.querySelector("#form");
+
+const input = document.querySelector("#message");
+
+const typing = document.querySelector("#typing");
+
+const soundButton = document.querySelector("#sound");
+
+let soundOn = true;
+
+let audio;
+
+function tone(freq, duration = 0.12) {
+
+  if (!soundOn) return;
+
+  try {
+
+    audio ||= new AudioContext();
+
+    if (audio.state === "suspended") audio.resume();
+
+    const osc = audio.createOscillator();
+
+    const gain = audio.createGain();
+
+    osc.frequency.value = freq;
+
+    gain.gain.setValueAtTime(0.07, audio.currentTime);
+
+    gain.gain.exponentialRampToValueAtTime(
+
+      0.001, audio.currentTime + duration
+
+    );
+
+    osc.connect(gain);
+
+    gain.connect(audio.destination);
+
+    osc.start();
+
+    osc.stop(audio.currentTime + duration);
+
+  } catch (e) {}
+
+}
+
+soundButton.onclick = () => {
+
+  soundOn = !soundOn;
+
+  soundButton.textContent = soundOn ? "🔊" : "🔇";
+
+  if (soundOn) tone(700);
+
+};
+
+function addMessage(text, who, save = true) {
+
+  const div = document.createElement("div");
+
+  div.className = "msg " + who;
+
+  const name = document.createElement("span");
+
+  name.className = "name";
+
+  name.textContent = who === "bot" ? "Мими 🐰" : "Ты";
+
+  div.append(name, document.createTextNode(text));
+
+  chat.appendChild(div);
+
+  chat.scrollTop = chat.scrollHeight;
+
+  if (save) saveHistory();
+
+}
+
+function saveHistory() {
+
+  try {
+
+    const messages = [...chat.querySelectorAll(".msg")].map(m => ({
+
+      who: m.classList.contains("user") ? "user" : "bot",
+
+      text: m.lastChild.textContent
+
+    }));
+
+    localStorage.setItem("mimi-chat", JSON.stringify(messages));
+
+  } catch (e) {}
+
+}
+
+function loadHistory() {
+
+  try {
+
+    const data = JSON.parse(localStorage.getItem("mimi-chat") || "[]");
+
+    if (!Array.isArray(data) || !data.length) return false;
+
+    data.forEach(m => {
+
+      if (m && typeof m.text === "string" &&
+
+          ["bot", "user"].includes(m.who)) {
+
+        addMessage(m.text, m.who, false);
+
+      }
+
+    });
+
+    return true;
+
+  } catch (e) {
+
+    return false;
+
+  }
+
+}
+
+const answers = [
+
+  "Ой, как интересно! Расскажи ещё! ✨",
+
+  "Мими тебя внимательно слушает 🐰💙",
+
+  "Хи-хи! Давай поговорим ещё! 🌸",
+
+  "Я пока маленький чат-бот, но стараюсь помочь! 💖",
+
+  "Давай помечтаем о чём-нибудь хорошем! ☁️",
+
+  "Ух ты! А что было дальше? 😊",
+
+  "Мими отправляет тебе виртуальное объятие 🤗",
+
+  "Как здорово! Расскажи мне побольше! ✨"
+
+];
+
+const known = [
+
+  [/привет|здравствуй|хай/i,
+
+    "Привет-привет! 🐰💙 Рада тебя видеть!"],
+
+  [/как дела/i,
+
+    "У меня всё хорошо! 😊 А как твои дела?"],
+
+  [/как тебя зовут|твоё имя|твое имя/i,
+
+    "Я Мими! Твой маленький чат-бот 🐰"],
+
+  [/кто ты/i,
+
+    "Я ЧатикМими — простой чат-бот с милыми ответами! 💙"],
+
+  [/спасибо/i,
+
+    "Всегда пожалуйста! 💖"],
+
+  [/пока|до свидания/i,
+
+    "Пока-пока! Возвращайся скорее! 🐰"],
+
+  [/скучно/i,
+
+    "Давай сыграем в слова! Я начинаю: облако ☁️"],
+
+  [/грустно|печально/i,
+
+    "Мне жаль, что тебе грустно 💙 Хочешь рассказать, что случилось?"],
+
+  [/помоги/i,
+
+    "Конечно! 🐰 Расскажи, какая помощь тебе нужна."],
+
+  [/что ты умеешь/i,
+
+    "Я умею общаться, отвечать на некоторые знакомые вопросы и хранить историю чата! ✨"],
+
+  [/люблю тебя/i,
+
+    "Мне приятно, что тебе нравится общаться со мной! 💖"]
+
+];
+
+function getAnswer(text) {
+
+  for (const [pattern, answer] of known) {
+
+    if (pattern.test(text)) return answer;
+
+  }
+
+  return answers[Math.floor(Math.random() * answers.length)];
+
+}
+
+let pending = false;
+
+form.addEventListener("submit", event => {
+
+  event.preventDefault();
+
+  const text = input.value.trim();
+
+  if (!text || pending) return;
+
+  addMessage(text, "user");
+
+  tone(880, 0.08);
+
+  input.value = "";
+
+  pending = true;
+
+  typing.hidden = false;
+
+  setTimeout(() => {
+
+    typing.hidden = true;
+
+    addMessage(getAnswer(text), "bot");
+
+    tone(660);
+
+    setTimeout(() => tone(880), 100);
+
+    pending = false;
+
+    input.focus();
+
+  }, 650);
+
+});
+
+document.querySelector("#clear").onclick = () => {
+
+  if (confirm("Очистить всю переписку?")) {
+
+    chat.replaceChildren();
+
+    try { localStorage.removeItem("mimi-chat"); } catch (e) {}
+
+    addMessage(
+
+      "Приветик! Я Мими 🐰💙 Чем займёмся?",
+
+      "bot"
+
+    );
+
+  }
+
+};
+
+if (!loadHistory()) {
+
+  addMessage(
+
+    "Приветик! Я Мими 🐰💙 Добро пожаловать в мой чатик! Напиши мне что-нибудь.",
+
+    "bot"
+
+  );
+
+}
+
+</script>
+
+</body>
+
+</html>
